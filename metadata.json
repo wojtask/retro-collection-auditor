@@ -1,0 +1,5 @@
+{
+  "name": "RetroCollection Auditor",
+  "description": "A tool to scan your EmulationStation SD card structure, analyze ROMs and media, and generate a comprehensive CSV report.",
+  "requestFramePermissions": []
+}
