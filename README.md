@@ -1,20 +1,22 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
-
-# Run and deploy your AI Studio app
-
-This contains everything you need to run your app locally.
-
-View your app in AI Studio: https://ai.studio/apps/drive/1Qoqma9tdl9Bal7hVemBq49zbUjIK0Ntw
+A tool to scan your EmulationStation SD card structure, analyze ROMs and media, and generate a comprehensive spreadsheet report.
 
 ## Run Locally
 
 **Prerequisites:**  Node.js
 
-
 1. Install dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+2. Mount your EmulationStation SD card with your video game collection.
 3. Run the app:
-   `npm run dev`
+   `node scan.js <path-to-roms> [path-to-es-de] > [report-csv]`
+   
+   **Combined Mode** (if gamelist.xml files are located togeter with ROMs):
+   ```sh
+   node scan.js "/Volumes/Odin3/ROMs" > my_collection.csv
+   ```
+   
+   **Split Mode** (if gamelist.xml files are separated from ROMs):
+   ```sh
+   node scan.js "/Volumes/Odin3/ROMs" "/Volumes/Odin3/ES-DE" > my_collection.csv
+   ```
+5. Import the CSV file in the spreadsheet app (MS Excel, Google Sheets).
