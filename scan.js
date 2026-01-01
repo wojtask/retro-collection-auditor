@@ -342,7 +342,7 @@ const scan = () => {
         g.playCount,
         g.romSize,
         g.mediaSize,
-        g.hasManual ? 'Yes' : 'No'
+        g.hasManual ? 'TRUE' : 'FALSE'
     ];
     console.log(row.join(','));
   }
