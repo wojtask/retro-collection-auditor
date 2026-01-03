@@ -82,6 +82,23 @@ const getFileSize = (filePath) => {
   }
 };
 
+const getDirectorySize = (dirPath) => {
+    let total = 0;
+    try {
+        const files = readdirSync(dirPath);
+        for (const file of files) {
+            const filePath = join(dirPath, file);
+            const stat = statSync(filePath);
+            if (stat.isDirectory()) {
+                total += getDirectorySize(filePath);
+            } else {
+                total += stat.size;
+            }
+        }
+    } catch (e) { return 0; }
+    return total;
+};
+
 const escapeCSV = (str) => {
   if (!str) return '';
   const stringVal = String(str);
@@ -208,64 +225,25 @@ const scan = () => {
       const games = Array.isArray(parsed.gameList.game) ? parsed.gameList.game : [parsed.gameList.game];
 
       for (const game of games) {
-        const romPathRaw = game.path;
-        if (!romPathRaw) continue;
+        if (!game.path) continue;
 
-        let fullRomPath = resolveXmlPath(baseResolutionDir, romPathRaw);
+        let fullRomPath = resolveXmlPath(baseResolutionDir, game.path);
+        let romFilename = basename(fullRomPath);
         
-        // Handle directory-based multi-disk games (e.g., Folder.m3u/Folder.m3u)
-        // If the path points to a directory, look for an .m3u file inside
-        try {
-            if (existsSync(fullRomPath) && statSync(fullRomPath).isDirectory()) {
-                const dirFiles = readdirSync(fullRomPath);
-                // First try to find a file matching the folder name (e.g. Game.m3u/Game.m3u)
-                const folderName = basename(fullRomPath);
-                let m3uFile = dirFiles.find(f => f.toLowerCase() === folderName.toLowerCase());
-                
-                // Fallback: any .m3u file
-                if (!m3uFile) {
-                    m3uFile = dirFiles.find(f => f.toLowerCase().endsWith('.m3u'));
-                }
-                
-                if (m3uFile) {
-                    fullRomPath = join(fullRomPath, m3uFile);
-                }
-            }
-        } catch (e) {
-            // Ignore directory access errors, preserve original path
-        }
-
-        const romFilename = basename(fullRomPath);
-        const isM3u = romFilename.toLowerCase().endsWith('.m3u');
-
         let romSize = 0;
-        let disks = [];
-
-        if (isM3u && existsSync(fullRomPath)) {
-            try {
-                if (statSync(fullRomPath).isDirectory()) {
-                    disks.push(`${romFilename} (Folder)`);
-                } else {
-                    const m3uContent = readFileSync(fullRomPath, 'utf8');
-                    const m3uDir = dirname(fullRomPath);
-                    const lines = m3uContent.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0 && !l.startsWith('#'));
-                    
-                    for (const line of lines) {
-                        const diskPath = resolve(m3uDir, line);
-                        const size = getFileSize(diskPath);
-                        romSize += size;
-                        disks.push(basename(diskPath));
-                    }
-                    
-                    if (romSize === 0) romSize = getFileSize(fullRomPath); // Fallback to m3u size
-                }
-            } catch (err) {
-                console.error(`  Error reading m3u ${romFilename}: ${err.message}`);
-                disks.push(`${romFilename} (Read Error)`);
-            }
-        } else {
-            romSize = getFileSize(fullRomPath);
-            disks.push(romFilename);
+        
+        if (existsSync(fullRomPath)) {
+             try {
+                 const stat = statSync(fullRomPath);
+                 if (stat.isDirectory()) {
+                     // If it's a directory (e.g. Game.m3u directory or Game.scummvm directory), get recursive size
+                     romSize = getDirectorySize(fullRomPath);
+                 } else {
+                     romSize = stat.size;
+                 }
+             } catch(e) {
+                 console.error(`  Error accessing ${romFilename}: ${e.message}`);
+             }
         }
 
         // Calculate Media Size and Check for Manual
@@ -312,7 +290,6 @@ const scan = () => {
             system,
             title: game.name || 'Unknown',
             romFilename: romFilename,
-            disks: disks.join('; '),
             region: detectRegion(romFilename) || detectRegion(game.name || ''),
             developer: game.developer || '',
             publisher: game.publisher || '',
@@ -333,7 +310,7 @@ const scan = () => {
 
   // Generate CSV
   const headers = [
-    'System', 'Title', 'ROM Filename', 'Disks / Files', 'Region', 
+    'System', 'Title', 'ROM Filename', 'Region', 
     'Developer', 'Publisher', 'Genre', 'Release Date', 
     'Rating', 'Play Count', 'ROM Size (Bytes)', 'Media Size (Bytes)', 'Has Manual'
   ];
@@ -345,7 +322,6 @@ const scan = () => {
         escapeCSV(g.system),
         escapeCSV(g.title),
         escapeCSV(g.romFilename),
-        escapeCSV(g.disks),
         escapeCSV(g.region),
         escapeCSV(g.developer),
         escapeCSV(g.publisher),
