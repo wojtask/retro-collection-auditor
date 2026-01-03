@@ -42,20 +42,36 @@ if (ES_DE_DIR_ARG) {
 
 // Helpers
 const detectRegion = (filename) => {
-  const regions = {
-    'USA': /\(U\)|\(USA\)|\(US\)|\(North America\)/i,
-    'Europe': /\(E\)|\(Europe\)|\(EUR\)/i,
-    'Japan': /\(J\)|\(Japan\)|\(JP\)/i,
-    'World': /\(W\)|\(World\)/i,
-    'France': /\(F\)|\(France\)/i,
-    'Germany': /\(G\)|\(Germany\)/i,
-    'Spain': /\(S\)|\(Spain\)/i,
-    'Italy': /\(I\)|\(Italy\)/i,
-  };
-  for (const [region, regex] of Object.entries(regions)) {
-    if (regex.test(filename)) return region;
+  // Extract content inside the first set of parentheses
+  const match = filename.match(/\((.*?)\)/);
+  if (!match) return 'Unknown';
+
+  const content = match[1];
+  // Split by comma for multi-region support (e.g. "USA, Europe")
+  const parts = content.split(',').map(s => s.trim());
+
+  const regionMap = [
+    { name: 'USA', regex: /^(U|USA)$/i },
+    { name: 'Europe', regex: /^(E|Europe)$/i },
+    { name: 'Japan', regex: /^(J|Japan)$/i },
+    { name: 'Australia', regex: /^(A|Australia)$/i },
+    { name: 'Korea', regex: /^(K|Korea)$/i },
+    { name: 'Canada', regex: /^(C|Canada)$/i },
+    { name: 'World', regex: /^(W|World)$/i },
+  ];
+
+  const detected = [];
+
+  for (const part of parts) {
+    for (const { name, regex } of regionMap) {
+      if (regex.test(part)) {
+        if (!detected.includes(name)) detected.push(name);
+        break; 
+      }
+    }
   }
-  return 'Unknown';
+
+  return detected.length > 0 ? detected.join(', ') : 'Unknown';
 };
 
 const formatESDate = (dateStr) => {
