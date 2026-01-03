@@ -132,7 +132,7 @@ const scanSystemMedia = (system) => {
                     for (const file of files) {
                         const filePath = join(typePath, file);
                         const size = getFileSize(filePath);
-                        const stem = parse(file).name; // 'Game.png' -> 'Game'
+                        const stem = parse(file).name; // 'Game.png' -> 'Game'; 'Game.m3u.png' -> 'Game.m3u'
                         
                         if (!systemMediaCache[system][stem]) {
                             systemMediaCache[system][stem] = { size: 0, hasManual: false };
@@ -275,11 +275,24 @@ const scan = () => {
         if (DOWNLOADED_MEDIA_ROOT) {
             // New logic: Use cache derived from downloaded_media
             const stem = parse(romFilename).name;
-            const data = systemMediaCache[system] && systemMediaCache[system][stem];
-            if (data) {
-                mediaSize = data.size;
-                hasManual = data.hasManual;
+            let totalSize = 0;
+            let manualFound = false;
+
+            // Check standard stem (e.g. "Game" from "Game.zip" or "Game.m3u")
+            if (systemMediaCache[system] && systemMediaCache[system][stem]) {
+                totalSize += systemMediaCache[system][stem].size;
+                if (systemMediaCache[system][stem].hasManual) manualFound = true;
             }
+
+            // Check full filename as stem (e.g. "Game.m3u" from "Game.m3u")
+            // This handles cases where media is named "Game.m3u.png"
+            if (stem !== romFilename && systemMediaCache[system] && systemMediaCache[system][romFilename]) {
+                totalSize += systemMediaCache[system][romFilename].size;
+                if (systemMediaCache[system][romFilename].hasManual) manualFound = true;
+            }
+
+            mediaSize = totalSize;
+            hasManual = manualFound;
         } else {
             // Legacy logic: Use paths in XML (Standard/Combined mode)
             const mediaTags = ['image', 'thumbnail', 'video', 'manual', 'marquee'];
